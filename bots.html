@@ -1,0 +1,318 @@
+<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>=^..^= Lego Gamepads</title>
+<style>
+    .axes {
+        padding: 1em;
+    }
+    
+    .buttons {
+        margin-left: 1em;
+    }
+    
+    /*meter*/.axis {
+        min-width: 200px;
+        margin: 1em;
+    }
+    
+    .button {
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+        padding: 1em;
+        border-radius: 20px;
+        border: 1px solid black;
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAAxJREFUCNdjYPjPAAACAgEAqiqeJwAAAABJRU5ErkJggg==);
+        background-size: 0% 0%;
+        background-position: 50% 50%;
+        background-repeat: no-repeat;
+    }
+    
+    .pressed {
+        border: 1px solid red;
+    }
+    
+    .touched::after {
+        content: "touch";
+        display: block;
+        position: absolute;
+        margin-top: -0.2em;
+        margin-left: -0.5em;
+        font-size: 0.8em;
+        opacity: 0.7;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+</head>
+<body>
+    <h2 id="start">Press a button on your controller to start</h2>
+<script>
+
+var service_uuid = "c5f50001-8280-46da-89f4-6d8051e4aeef";
+var char_uuid = "c5f50002-8280-46da-89f4-6d8051e4aeef";
+
+var service_uuid_lwp = "00001623-1212-efde-1623-785feabcd123";
+var char_uuid_lwp = "00001624-1212-efde-1623-785feabcd123";
+
+function connectToHub(gamepad)
+{
+    navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }] })
+    .then(device => {
+        console.log(`Connecting [${device.name}] ...`);
+        device.addEventListener('gattserverdisconnected', () => {
+            console.log(`Hub disconnected.`);
+            buttons[gamepad.index].innerText = "Connect To Hub";
+            hubs[gamepad.index] = null;
+        });
+        return device.gatt.connect();
+    })
+    .then(server => {
+        console.log(`Connected server: [${server}].`);
+//        return server.getPrimaryService(service_uuid);
+
+        server.getPrimaryService(service_uuid).then(service => {
+            console.log(`Connected service: [${service}].`);
+            return service.getCharacteristic(char_uuid);
+        })
+        .then(ch => {
+            console.log(`Connected characteristic: [${ch}].`);
+
+            ch.addEventListener('characteristicvaluechanged',(v) => { hubReady = true; });
+            ch.startNotifications();
+            
+            ch.writeValueWithResponse(new Uint8Array([1]))
+            .then(r => {
+                console.log("Sending updates :3"); 
+            })
+            .catch(error => {
+                console.log('write value error: ' + error);
+                console.log("Sending updates anyway :3");
+            })
+            .then(r => {
+                hubs[gamepad.index] = (gp) => sendData(ch, gp); 
+                buttons[gamepad.index].innerText = "Connected to " +  ch.service.device.name;
+            });
+        })
+
+        server.getPrimaryService(service_uuid_lwp).then(service => {
+            console.log(`Connected service: [${service}].`);
+            return service.getCharacteristic(char_uuid_lwp);
+        })
+        .then(ch => {
+            console.log(`Connected characteristic: [${ch}].`);
+
+            ch.addEventListener('characteristicvaluechanged',(v) => { hubReady = true; });
+            ch.startNotifications();
+            
+            ch.writeValueWithoutResponse(new Uint8Array([0x06, 0x00, 0x61, 0x01, 0x00, 0x01]))
+            .then(r => {
+                console.log("Sending stuff"); 
+            })
+            .catch(error => {
+                console.log('write value error: ' + error);
+            })
+            .then(r => {
+                //hubs[gamepad.index] = ch; 
+                hubs[gamepad.index] = (gp) => sendDataLWP(ch, gp); 
+                buttons[gamepad.index].innerText = "Connected to " +  ch.service.device.name;
+            });
+        })
+
+    })
+}
+
+function sendData(characteristic, gp) {
+    //if (service) {
+    //    service.getCharacteristic(char_uuid)
+//      .then(characteristic => {
+  //        return characteristic.writeValue(new Uint8Array(data));
+//      })
+    //console.log(characteristic);
+    if (characteristic) 
+    {
+        //characteristic.writeValue(new Uint8Array(data))
+
+        var btns = gp.buttons.map((v)=>Math.round(v.value * 127));
+        var axs = gp.axes.map((v)=>Math.round(v * 127))
+        //console.log(hubs);
+        var data = [0x06, btns.length, axs.length].concat(btns, axs);
+
+        hubReady = false;
+        characteristic.writeValueWithResponse(new Uint8Array(data))
+        //characteristic.writeValueWithoutResponse(new Uint8Array(data))
+      
+        .then(_ => {
+          //console.log('Sent: ' + data);
+        })
+        .catch(error => {
+          //console.log('send_data() error: ' + error);
+        });
+    } else {
+        //console.log('Ignored sending data because service is not connected.');
+    }
+}
+
+function clamp(v, min, max) {
+  return Math.min(Math.max(v, min), max);
+}
+
+function sendDataLWP(characteristic, gp)
+{
+  if (characteristic) 
+  {
+    var m1 = clamp(gp.axes[0] + gp.axes[1] + gp.axes[2] + gp.axes[3], -1, 1);
+    var m2 = clamp(gp.axes[0] - gp.axes[1] + gp.axes[2] - gp.axes[3], -1, 1);
+    characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), Math.round(m2 * 100)]));
+  }
+
+}
+
+/*
+ * Gamepad API Test
+ * Written in 2013 by Ted Mielczarek <ted@mielczarek.org>
+ *
+ * To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
+ *
+ * You should have received a copy of the CC0 Public Domain Dedication along with this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+ */
+var haveEvents = 'GamepadEvent' in window;
+var haveWebkitEvents = 'WebKitGamepadEvent' in window;
+var controllers = {};
+var hubs = {};
+var buttons = {};
+var hubReady = false;
+var rAF = window.mozRequestAnimationFrame ||
+  window.webkitRequestAnimationFrame ||
+  window.requestAnimationFrame;
+
+function connecthandler(e) {
+  addgamepad(e.gamepad);
+}
+function addgamepad(gamepad) {
+  controllers[gamepad.index] = gamepad; var d = document.createElement("div");
+  hubs[gamepad.index] = null;
+  //controllers[gamepad.index].service = null;
+  //controllers[gamepad.index].characteristic = null;
+  d.setAttribute("id", "controller" + gamepad.index);
+  var t = document.createElement("h1");
+  t.appendChild(document.createTextNode("gamepad: " + gamepad.id));
+  d.appendChild(t);
+  var btn = document.createElement("button");
+  btn.setAttribute("id", "hub_btn_" + gamepad.index);
+  btn.innerText = "Connect To Hub";
+  btn.onpointerdown =  (e) => connectToHub(controllers[gamepad.index]);
+  buttons[gamepad.index] = btn;
+  d.appendChild(btn);
+  var b = document.createElement("div");
+  b.className = "buttons";
+  for (var i=0; i<gamepad.buttons.length; i++) {
+    var e = document.createElement("span");
+    e.className = "button";
+    //e.id = "b" + i;
+    e.innerHTML = i;
+    b.appendChild(e);
+  }
+  d.appendChild(b);
+  var a = document.createElement("div");
+  a.className = "axes";
+  for (i=0; i<gamepad.axes.length; i++) {
+    e = document.createElement("meter");
+    e.className = "axis";
+    //e.id = "a" + i;
+    e.setAttribute("min", "-1");
+    e.setAttribute("max", "1");
+    e.setAttribute("value", "0");
+    e.innerHTML = i;
+    a.appendChild(e);
+  }
+  d.appendChild(a);
+  document.getElementById("start").style.display = "none";
+  document.body.appendChild(d);
+  console.log("Gamepad added");
+  //rAF(updateStatus);
+}
+
+function disconnecthandler(e) {
+  removegamepad(e.gamepad);
+}
+
+function removegamepad(gamepad) {
+  console.log("Gamepad removed");
+  var d = document.getElementById("controller" + gamepad.index);
+  document.body.removeChild(d);
+  delete controllers[gamepad.index];
+}
+
+function updateStatus() {
+  scangamepads();
+  for (j in controllers) {
+    var controller = controllers[j];
+    var d = document.getElementById("controller" + j);
+    var buttons = d.getElementsByClassName("button");
+    for (var i=0; i<controller.buttons.length; i++) {
+      var b = buttons[i];
+      var val = controller.buttons[i];
+      var pressed = val == 1.0;
+      var touched = false;
+      if (typeof(val) == "object") {
+        pressed = val.pressed;
+        if ('touched' in val) {
+          touched = val.touched;
+        }
+        val = val.value;
+      }
+      var pct = Math.round(val * 100) + "%";
+      b.style.backgroundSize = pct + " " + pct;
+      b.className = "button";
+      if (pressed) {
+        b.className += " pressed";
+      }
+      if (touched) {
+        b.className += " touched";
+      }
+    }
+
+    var axes = d.getElementsByClassName("axis");
+    for (var i=0; i<controller.axes.length; i++) {
+      var a = axes[i];
+      a.innerHTML = i + ": " + controller.axes[i].toFixed(4);
+      a.setAttribute("value", controller.axes[i]);
+    }
+
+    if (hubs[controller.index])
+      hubs[controller.index](controller);
+
+    //var btns = controller.buttons.map((v)=>Math.round(v.value * 127));
+    //var axs = controller.axes.map((v)=>Math.round(v * 127))
+    //console.log(hubs);
+    //sendData(hubs[controller.index], [0x06, btns.length, axs.length].concat(btns, axs));
+    //sendData(hubs[controller.index], [0x06, btns.length, axs.length].concat(btns, axs));
+  }
+  //rAF(updateStatus);
+  setTimeout(updateStatus, 50);
+}
+
+function scangamepads() {
+  var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+  for (var i = 0; i < gamepads.length; i++) {
+    if (gamepads[i] && (gamepads[i].index in controllers)) {
+      controllers[gamepads[i].index] = gamepads[i];
+    }
+  }
+}
+
+if (haveEvents) {
+  window.addEventListener("gamepadconnected", connecthandler);
+  window.addEventListener("gamepaddisconnected", disconnecthandler);
+} else if (haveWebkitEvents) {
+  window.addEventListener("webkitgamepadconnected", connecthandler);
+  window.addEventListener("webkitgamepaddisconnected", disconnecthandler);
+} else {
+  setInterval(scangamepads, 500);
+}
+
+updateStatus();
+</script>    
+</body>
+</html>
