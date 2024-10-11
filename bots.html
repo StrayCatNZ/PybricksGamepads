@@ -113,8 +113,8 @@ function connectToHub(gamepad)
                 console.log('write value error: ' + error);
             })
             .then(r => {
-                //hubs[gamepad.index] = ch; 
-                hubs[gamepad.index] = (gp) => sendDataLWP(ch, gp); 
+                var state = { mode:0 };
+                hubs[gamepad.index] = (gp) => sendDataLWP(ch, gp, state); 
                 buttons[gamepad.index].innerText = "Connected to " +  ch.service.device.name;
             });
         })
@@ -123,24 +123,14 @@ function connectToHub(gamepad)
 }
 
 function sendData(characteristic, gp) {
-    //if (service) {
-    //    service.getCharacteristic(char_uuid)
-//      .then(characteristic => {
-  //        return characteristic.writeValue(new Uint8Array(data));
-//      })
-    //console.log(characteristic);
     if (characteristic) 
     {
-        //characteristic.writeValue(new Uint8Array(data))
-
         var btns = gp.buttons.map((v)=>Math.round(v.value * 127));
         var axs = gp.axes.map((v)=>Math.round(v * 127))
-        //console.log(hubs);
         var data = [0x06, btns.length, axs.length].concat(btns, axs);
 
         hubReady = false;
         characteristic.writeValueWithResponse(new Uint8Array(data))
-        //characteristic.writeValueWithoutResponse(new Uint8Array(data))
       
         .then(_ => {
           //console.log('Sent: ' + data);
@@ -157,13 +147,29 @@ function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);
 }
 
-function sendDataLWP(characteristic, gp)
+function sendDataLWP(characteristic, gp, state)
 {
   if (characteristic) 
   {
-    var m1 = clamp(gp.axes[0] + gp.axes[1] + gp.axes[2] + gp.axes[3], -1, 1);
-    var m2 = clamp(gp.axes[0] - gp.axes[1] + gp.axes[2] - gp.axes[3], -1, 1);
-    characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), Math.round(m2 * 100)]));
+    var speed = gp.buttons[7].value - gp.buttons[6].value;
+    var turn = gp.axes[2] + gp.axes[0];
+
+    if (gp.buttons[9].value > 0 && state.buttons[9].value <= 0)
+    {
+      state.mode += 1;
+      if (state.mode > 1)
+        state.mode = 0;
+    }
+
+    if (state.mode == 1)
+      speed -= gp.axes[1] + gp.axes[3];
+
+    var m1 = clamp(speed - turn, -1, 1);
+    var m2 = clamp(speed + turn, -1, 1);
+
+    state.buttons = gp.buttons;
+
+    characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), -Math.round(m2 * 100)]));
   }
 
 }
@@ -192,8 +198,6 @@ function connecthandler(e) {
 function addgamepad(gamepad) {
   controllers[gamepad.index] = gamepad; var d = document.createElement("div");
   hubs[gamepad.index] = null;
-  //controllers[gamepad.index].service = null;
-  //controllers[gamepad.index].characteristic = null;
   d.setAttribute("id", "controller" + gamepad.index);
   var t = document.createElement("h1");
   t.appendChild(document.createTextNode("gamepad: " + gamepad.id));
@@ -209,7 +213,6 @@ function addgamepad(gamepad) {
   for (var i=0; i<gamepad.buttons.length; i++) {
     var e = document.createElement("span");
     e.className = "button";
-    //e.id = "b" + i;
     e.innerHTML = i;
     b.appendChild(e);
   }
@@ -219,7 +222,6 @@ function addgamepad(gamepad) {
   for (i=0; i<gamepad.axes.length; i++) {
     e = document.createElement("meter");
     e.className = "axis";
-    //e.id = "a" + i;
     e.setAttribute("min", "-1");
     e.setAttribute("max", "1");
     e.setAttribute("value", "0");
@@ -283,11 +285,6 @@ function updateStatus() {
     if (hubs[controller.index])
       hubs[controller.index](controller);
 
-    //var btns = controller.buttons.map((v)=>Math.round(v.value * 127));
-    //var axs = controller.axes.map((v)=>Math.round(v * 127))
-    //console.log(hubs);
-    //sendData(hubs[controller.index], [0x06, btns.length, axs.length].concat(btns, axs));
-    //sendData(hubs[controller.index], [0x06, btns.length, axs.length].concat(btns, axs));
   }
   //rAF(updateStatus);
   setTimeout(updateStatus, 50);
