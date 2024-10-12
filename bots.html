@@ -55,6 +55,8 @@ var char_uuid = "c5f50002-8280-46da-89f4-6d8051e4aeef";
 var service_uuid_lwp = "00001623-1212-efde-1623-785feabcd123";
 var char_uuid_lwp = "00001624-1212-efde-1623-785feabcd123";
 
+var ledPort = 0x31;
+
 function connectToHub(gamepad)
 {
     navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }] })
@@ -102,7 +104,12 @@ function connectToHub(gamepad)
         .then(ch => {
             console.log(`Connected characteristic: [${ch}].`);
 
-            ch.addEventListener('characteristicvaluechanged',(v) => { hubReady = true; });
+            ch.addEventListener('characteristicvaluechanged',(event) => { 
+              hubReady = true; 
+              var b = event.target.value;
+              if (b.getUint8(0) == 0x0F && b.getUint8(2) == 0x04 && b.getUint8(4) == 0x01 && b.getUint8(5) == 0x17)
+                ledPort = b.getUint8(3);
+            });
             ch.startNotifications();
             
             ch.writeValueWithoutResponse(new Uint8Array([0x06, 0x00, 0x61, 0x01, 0x00, 0x01]))
@@ -113,10 +120,10 @@ function connectToHub(gamepad)
                 console.log('write value error: ' + error);
             })
             .then(r => {
-                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x41, 0x31, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]));
+                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x41, ledPort, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]));
             })
             .then(r => {
-                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x31, 0x11, 0x51, 0x01].concat(mode_colors[0])));
+                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, ledPort, 0x11, 0x51, 0x01].concat(mode_colors[0])));
             })
             .then(r => {
                 var state = { mode:0 };
@@ -169,7 +176,7 @@ function sendDataLWP(characteristic, gp, state)
       if (state.mode > 1)
         state.mode = 0;
 
-      characteristic.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x31, 0x11, 0x51, 0x01].concat(mode_colors[state.mode])));
+      characteristic.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, ledPort, 0x11, 0x51, 0x01].concat(mode_colors[state.mode])));
     }
     else
     {
@@ -181,7 +188,7 @@ function sendDataLWP(characteristic, gp, state)
 
       characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), -Math.round(m2 * 100)]));
     }
-    
+
     state.buttons = gp.buttons;
   }
 
