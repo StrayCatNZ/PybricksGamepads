@@ -113,10 +113,17 @@ function connectToHub(gamepad)
                 console.log('write value error: ' + error);
             })
             .then(r => {
+                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x41, 0x31, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]));
+            })
+            .then(r => {
+                return ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x31, 0x11, 0x51, 0x01].concat(mode_colors[0])));
+            })
+            .then(r => {
                 var state = { mode:0 };
                 hubs[gamepad.index] = (gp) => sendDataLWP(ch, gp, state); 
                 buttons[gamepad.index].innerText = "Connected to " +  ch.service.device.name;
             });
+
         })
 
     })
@@ -147,6 +154,8 @@ function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);
 }
 
+mode_colors = [[0x00, 0xff, 0x00], [0xff, 0x00, 0xff]]
+
 function sendDataLWP(characteristic, gp, state)
 {
   if (characteristic) 
@@ -159,17 +168,21 @@ function sendDataLWP(characteristic, gp, state)
       state.mode += 1;
       if (state.mode > 1)
         state.mode = 0;
+
+      characteristic.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x31, 0x11, 0x51, 0x01].concat(mode_colors[state.mode])));
     }
+    else
+    {
+      if (state.mode == 1)
+        speed -= gp.axes[1] + gp.axes[3];
 
-    if (state.mode == 1)
-      speed -= gp.axes[1] + gp.axes[3];
+      var m1 = clamp(speed - turn, -1, 1);
+      var m2 = clamp(speed + turn, -1, 1);
 
-    var m1 = clamp(speed - turn, -1, 1);
-    var m2 = clamp(speed + turn, -1, 1);
-
+      characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), -Math.round(m2 * 100)]));
+    }
+    
     state.buttons = gp.buttons;
-
-    characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), -Math.round(m2 * 100)]));
   }
 
 }
