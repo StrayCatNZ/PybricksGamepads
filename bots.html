@@ -183,8 +183,8 @@ function sendDataLWP(characteristic, gp, state)
       if (state.mode == 1)
         speed -= gp.axes[1] + gp.axes[3];
 
-      var m1 = clamp(speed - turn, -1, 1);
-      var m2 = clamp(speed + turn, -1, 1);
+      var m1 = clamp(-speed - turn, -1, 1);
+      var m2 = clamp(-speed + turn, -1, 1);
 
       characteristic.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(m1 * 100), -Math.round(m2 * 100)]));
     }
