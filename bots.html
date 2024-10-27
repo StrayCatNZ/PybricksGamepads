@@ -43,6 +43,10 @@
     .hidden {
         display: none;
     }
+
+    .margins {
+      margin: 0.8em;
+    }
 </style>
 </head>
 <body>
@@ -80,7 +84,16 @@ function connectToHub(gamepad)
         .then(ch => {
             console.log(`Connected characteristic: [${ch}].`);
 
-            ch.addEventListener('characteristicvaluechanged',(v) => { hubReady = true; });
+            var decoder = new TextDecoder();
+
+            ch.addEventListener('characteristicvaluechanged',(event) => { 
+              hubReady = true; 
+              var b = event.target.value;
+              if (b.getUint8(0) == 1)
+              {
+                statuses[gamepad.index].innerText = decoder.decode(b.buffer.slice(1, -1));
+              }
+            });
             ch.startNotifications();
             
             ch.writeValueWithResponse(new Uint8Array([1]))
@@ -207,6 +220,7 @@ var haveWebkitEvents = 'WebKitGamepadEvent' in window;
 var controllers = {};
 var hubs = {};
 var buttons = {};
+var statuses = {};
 var hubReady = false;
 var rAF = window.mozRequestAnimationFrame ||
   window.webkitRequestAnimationFrame ||
@@ -225,9 +239,15 @@ function addgamepad(gamepad) {
   var btn = document.createElement("button");
   btn.setAttribute("id", "hub_btn_" + gamepad.index);
   btn.innerText = "Connect To Hub";
+  btn.className = "margins";
   btn.onpointerdown =  (e) => connectToHub(controllers[gamepad.index]);
   buttons[gamepad.index] = btn;
   d.appendChild(btn);
+  var status = document.createElement("span");
+  status.innerText = "Waiting for status..."
+  status.className = "margins";
+  d.appendChild(status);
+  statuses[gamepad.index] = status;
   var b = document.createElement("div");
   b.className = "buttons";
   for (var i=0; i<gamepad.buttons.length; i++) {
