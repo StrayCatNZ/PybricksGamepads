@@ -1,0 +1,79 @@
+<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>=^..^= LWP Test</title>
+</head>
+<body>
+    <h2 id="start">LWP</h2>
+    <button onclick="Connect()">Connect to hub</button>
+<script>
+var service_uuid = "00001623-1212-efde-1623-785feabcd123";
+var char_uuid = "00001624-1212-efde-1623-785feabcd123";
+
+var hub = null;
+    
+    function Connect()
+    {
+        navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }] })
+    .then(device => {
+        console.log(`Connecting [${device.name}] ...`);
+        device.addEventListener('gattserverdisconnected', () => {
+            console.log(`Hub disconnected.`);
+        });
+        return device.gatt.connect();
+    })
+    .then(server => {
+        console.log(`Connected server: [${server}].`);
+        return server.getPrimaryService(service_uuid);
+    })
+    .then(service => {
+        console.log(`Connected service: [${service}].`);
+        return service.getCharacteristic(char_uuid);
+    })
+    .then(ch => {
+        console.log(`Connected characteristic: [${ch}].`);
+
+        ch.addEventListener('characteristicvaluechanged',(event) => { 
+            console.log(event.target.value); 
+            var b = event.target.value;
+            if (b.getUint8(0) == 0x0F && b.getUint8(2) == 0x04 && b.getUint8(4) == 0x01 && b.getUint8(5) == 0x17)
+                console.log("LED is at " + b.getUint8(3));
+        });
+        ch.startNotifications();
+
+        //hub = ch;
+        //*
+
+        ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x41, 0x31, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]))
+        .then(r => {
+            ch.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x31, 0x11, 0x51, 0x01, 0xff, 0x00, 0x00]))
+            .then(r => {
+                console.log("Sending stuff"); 
+            })
+            .catch(error => {
+                console.log('write value error: ' + error);
+            })
+            .then(r => {
+                hub = ch;
+            });//*/
+
+        });
+    })
+
+    }
+
+    function onUpdate()
+    {
+        if (hub)
+        {
+            //hub.writeValueWithoutResponse(new Int8Array([0x08, 0x00, 0x81, 0x10, 0x00, 0x02, Math.round(Math.random() * 200 - 100), Math.round(Math.random() * 200 - 100)]))
+            //hub.writeValueWithoutResponse(new Uint8Array([0x07, 0x00, 0x81, 0x10, 0x00, 0x01, Math.round( Math.random() * 255)]))
+            //hub.writeValueWithoutResponse(new Uint8Array([0x0a, 0x00, 0x81, 0x01, 0x11, 0x01, Math.round( Math.random() * 255), 0xff, 0x00, 0x00]))
+            /*hub.writeValueWithoutResponse(new Uint8Array(
+                [0x14, 0x00, 0x81, 0x01, 0x11, 0x01, Math.round( Math.random() * 255), 0xff, 0x00, 0x00
+                , 0x00, 0x81, 0x00, 0x11, 0x01, Math.round( Math.random() * 255), 0xff, 0x00, 0x00
+                ]))*/
+        }
+    }
+
+    setInterval(onUpdate, 1000);
+</script>    
+</body>
+</html>
