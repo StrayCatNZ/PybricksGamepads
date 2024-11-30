@@ -61,19 +61,34 @@ var char_uuid_lwp = "00001624-1212-efde-1623-785feabcd123";
 
 var ledPort = 0x31;
 
-function connectToHub(gamepad)
+function findHubAndConnect(gamepad)
 {
     navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }] })
     .then(device => {
-        console.log(`Connecting [${device.name}] ...`);
+        console.log(`Connecting To [${device.name}] ...`);
+        buttons[gamepad.index].innerText = `Connecting To [${device.name}] ...`;
         device.addEventListener('gattserverdisconnected', () => {
             console.log(`Hub disconnected.`);
-            buttons[gamepad.index].innerText = "Connect To Hub";
+            buttons[gamepad.index].innerText = `Disconnected From [${device.name}], Trying To Reconnect...`;
             hubs[gamepad.index] = null;
+            delayedConnect(100, gamepad, device);
         });
-        return device.gatt.connect();
+        clearTimeout(timers[gamepad.id]);
+        return connect(gamepad, device);
     })
-    .then(server => {
+    .catch(error => {
+    })    
+}
+
+function delayedConnect(delay, gamepad, device)
+{
+    clearTimeout(timers[gamepad.id]);
+    timers[gamepad.id] = setTimeout(connect, delay, gamepad, device);
+}
+
+function connect(gamepad, device)    
+{
+  return device.gatt.connect().then(server => {
         console.log(`Connected server: [${server}].`);
 //        return server.getPrimaryService(service_uuid);
 
@@ -146,6 +161,9 @@ function connectToHub(gamepad)
 
         })
 
+    })
+    .catch(error => {
+        delayedConnect(1000, gamepad, device);
     })
 }
 
@@ -221,6 +239,7 @@ var controllers = {};
 var hubs = {};
 var buttons = {};
 var statuses = {};
+var timers = {};
 var hubReady = false;
 var rAF = window.mozRequestAnimationFrame ||
   window.webkitRequestAnimationFrame ||
@@ -240,7 +259,7 @@ function addgamepad(gamepad) {
   btn.setAttribute("id", "hub_btn_" + gamepad.index);
   btn.innerText = "Connect To Hub";
   btn.className = "margins";
-  btn.onpointerdown =  (e) => connectToHub(controllers[gamepad.index]);
+  btn.onpointerdown =  (e) => findHubAndConnect(controllers[gamepad.index]);
   buttons[gamepad.index] = btn;
   d.appendChild(btn);
   var status = document.createElement("span");
