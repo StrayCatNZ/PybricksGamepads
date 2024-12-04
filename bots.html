@@ -73,7 +73,7 @@ function findHubAndConnect(gamepad)
             hubs[gamepad.index] = null;
             delayedConnect(100, gamepad, device);
         });
-        clearTimeout(timers[gamepad.id]);
+        clearTimeout(timers[gamepad.index]);
         return connect(gamepad, device);
     })
     .catch(error => {
@@ -82,8 +82,9 @@ function findHubAndConnect(gamepad)
 
 function delayedConnect(delay, gamepad, device)
 {
-    clearTimeout(timers[gamepad.id]);
-    timers[gamepad.id] = setTimeout(connect, delay, gamepad, device);
+    console.log(`Trying to reconnect...`);
+    clearTimeout(timers[gamepad.index]);
+    timers[gamepad.index] = setTimeout(connect, delay, gamepad, device);
 }
 
 function connect(gamepad, device)    
@@ -290,12 +291,13 @@ function addgamepad(gamepad) {
   d.appendChild(a);
   document.getElementById("start").style.display = "none";
   document.body.appendChild(d);
-  console.log("Gamepad added");
+  console.log("Gamepad added " + gamepad.index);
   //rAF(updateStatus);
 }
 
 function disconnecthandler(e) {
   removegamepad(e.gamepad);
+  clearTimeout(timers[e.gamepad.index]);
 }
 
 function removegamepad(gamepad) {
