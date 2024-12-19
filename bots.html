@@ -74,6 +74,7 @@ function findHubAndConnect(gamepad)
             delayedConnect(100, gamepad, device);
         });
         clearTimeout(timers[gamepad.index]);
+        misc[gamepad.index].reconnect = 0;
         return connect(gamepad, device);
     })
     .catch(error => {
@@ -164,7 +165,16 @@ function connect(gamepad, device)
 
     })
     .catch(error => {
-        delayedConnect(1000, gamepad, device);
+        misc[gamepad.index].reconnect++;
+        if (misc[gamepad.index].reconnect > 10)
+        {
+          buttons[gamepad.index].innerText = "Disconnected... :("
+          misc[gamepad.index].reconnect = 0
+        }
+        else
+        {
+          delayedConnect(1000, gamepad, device);
+        }
     })
 }
 
@@ -241,6 +251,7 @@ var hubs = {};
 var buttons = {};
 var statuses = {};
 var timers = {};
+var misc = {};
 var hubReady = false;
 var rAF = window.mozRequestAnimationFrame ||
   window.webkitRequestAnimationFrame ||
@@ -293,6 +304,8 @@ function addgamepad(gamepad) {
   document.body.appendChild(d);
   console.log("Gamepad added " + gamepad.index);
   //rAF(updateStatus);
+
+  misc[gamepad.index] = {reconnect:0};
 }
 
 function disconnecthandler(e) {
