@@ -103,7 +103,16 @@ function connect(gamepad, device)
             return service.getCharacteristic(char_uuid);
         })
         .then(ch => {
-             console.log(`Connected characteristic: [${ch}].`);
+            console.log(`Connected characteristic: [${ch}].`);
+	        const encoder = new TextEncoder();
+	        const buffer = encoder.encode("x\n").buffer;
+	        ch.writeValueWithResponse(buffer)
+            .then(r => {
+                hubReady = true; 
+		        console.log("Sending updates :3"); 
+            });
+            hubs[gamepad.index] = (gp) => sendDataUART(ch, gp); 
+            buttons[gamepad.index].innerText = "Connected to " +  ch.service.device.name;
         })
       
         server.getPrimaryService(service_uuid).then(service => {
@@ -189,7 +198,28 @@ function connect(gamepad, device)
         }
     })
 }
+    
+function sendDataUART(characteristic, gp) {
+    if (characteristic && hubReady) 
+    {
+        var btns = gp.buttons.map((v)=>Math.round(v.value * 100));
+        var axs = gp.axes.map((v)=>Math.round(v * 100))
+        var data = axs[0] + ";" + axs[1] + ";" + axs[2] + ";" + axs[3] + ";" + btns[0] + ";" + btns[1] + "\n";
+	const encoder = new TextEncoder();
 
+	const buffer = encoder.encode(data).buffer;
+	hubReady = false;
+	characteristic.writeValueWithResponse(buffer)
+        .then(r => {
+            hubReady = true; 
+	    //console.log('Sent: ' + data);
+        });
+
+    } else {
+        //console.log('Ignored sending data because service is not connected.');
+    }
+}
+    
 function sendData(characteristic, gp) {
     if (characteristic) 
     {
