@@ -59,11 +59,15 @@ var char_uuid = "c5f50002-8280-46da-89f4-6d8051e4aeef";
 var service_uuid_lwp = "00001623-1212-efde-1623-785feabcd123";
 var char_uuid_lwp = "00001624-1212-efde-1623-785feabcd123";
 
+var UARTSERVICE_SERVICE_UUID = "6E400001B5A3F393E0A9E50E24DCCA9E";
+var UART_RX_CHARACTERISTIC_UUID = "6E400002B5A3F393E0A9E50E24DCCA9E";
+var UART_TX_CHARACTERISTIC_UUID = "6E400003B5A3F393E0A9E50E24DCCA9E";
+
 var ledPort = 0x31;
 
 function findHubAndConnect(gamepad)
 {
-    navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }] })
+    navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }, { services: [UARTSERVICE_SERVICE_UUID] }] })
     .then(device => {
         console.log(`Connecting To [${device.name}] ...`);
         buttons[gamepad.index].innerText = `Connecting To [${device.name}] ...`;
@@ -94,6 +98,14 @@ function connect(gamepad, device)
         console.log(`Connected server: [${server}].`);
 //        return server.getPrimaryService(service_uuid);
 
+        server.getPrimaryService(UARTSERVICE_SERVICE_UUID).then(service => {
+            console.log(`Connected service: [${service}].`);
+            return service.getCharacteristic(char_uuid);
+        })
+        .then(ch => {
+             console.log(`Connected characteristic: [${ch}].`);
+        })
+      
         server.getPrimaryService(service_uuid).then(service => {
             console.log(`Connected service: [${service}].`);
             return service.getCharacteristic(char_uuid);
