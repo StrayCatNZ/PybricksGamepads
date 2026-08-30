@@ -100,7 +100,7 @@ function connect(gamepad, device)
 
         server.getPrimaryService(UARTSERVICE_SERVICE_UUID).then(service => {
             console.log(`Connected service: [${service}].`);
-            return service.getCharacteristic(char_uuid);
+            return service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
         })
         .then(ch => {
             console.log(`Connected characteristic: [${ch}].`);
