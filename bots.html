@@ -67,7 +67,7 @@ var ledPort = 0x31;
 
 function findHubAndConnect(gamepad)
 {
-    navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }, { services: [UARTSERVICE_SERVICE_UUID] }] })
+    navigator.bluetooth.requestDevice({ filters: [{ services: [service_uuid] }, { services: [service_uuid_lwp] }, { name: ["BBC micro:bit"] }], optionalServices: [UARTSERVICE_SERVICE_UUID] })
     .then(device => {
         console.log(`Connecting To [${device.name}] ...`);
         buttons[gamepad.index].innerText = `Connecting To [${device.name}] ...`;
