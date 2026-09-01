@@ -47,10 +47,44 @@
     .margins {
       margin: 0.8em;
     }
+
+    #joystick-zone {
+      position: fixed;
+      bottom: 50px;
+      left: 50px;
+      width: 150px;
+      height: 150px;
+      background: rgba(0, 0, 0, 0.1);
+      /*border-radius: 50%;*/
+    }
+    #joystick-base {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid #fff;
+      /*border-radius: 50%;*/
+    }
+    #joystick-stick {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: #fff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.05s linear;
+    }    
 </style>
 </head>
 <body>
     <h2 id="start">Press a button on your controller to start</h2>
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <div id="joystick-stick"></div>
+      </div>
+    </div>    
 <script>
 
 var service_uuid = "c5f50001-8280-46da-89f4-6d8051e4aeef";
@@ -426,6 +460,88 @@ if (haveEvents) {
 }
 
 updateStatus();
+
+
+//joystick
+
+var fakeGamepad = { id:"Fake Touch Gamepad", index:666, axes:[0,0,0,0], buttons:[{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},] }
+
+addgamepad(fakeGamepad)
+
+const base = document.getElementById('joystick-base');
+const stick = document.getElementById('joystick-stick');
+
+let maxRadius = 50;  // Maximum distance the stick can move
+let joystickX = 0;   // Normalized output X (-1 to 1)
+let joystickY = 0;   // Normalized output Y (-1 to 1)
+let isDragging = false; // Flag to track mouse drag state
+
+// --- TOUCH EVENTS ---
+base.addEventListener('touchstart', (e) => handleInput(e.touches[0], e), { passive: false });
+window.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 0) handleInput(e.touches[0], e);
+}, { passive: false });
+window.addEventListener('touchend', resetJoystick);
+
+// --- MOUSE EVENTS ---
+base.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  handleInput(e, e);
+});
+window.addEventListener('mousemove', (e) => {
+  if (isDragging) handleInput(e, e);
+});
+window.addEventListener('mouseup', () => {
+  if (isDragging) resetJoystick();
+});
+
+// --- CORE LOGIC ---
+function handleInput(input, event) {
+  // Prevent scrolling on touch screens or selecting text on desktop
+  if (event && event.cancelable) event.preventDefault(); 
+  
+  const rect = base.getBoundingClientRect();
+  
+  // Calculate relative position from the base center
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  
+  let deltaX = input.clientX - centerX;
+  let deltaY = input.clientY - centerY;
+  
+  /*
+  // Calculate total distance from center
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  
+  // Constrain stick position to the perimeter of the maxRadius
+  if (distance > maxRadius) {
+    deltaX = (deltaX / distance) * maxRadius;
+    deltaY = (deltaY / distance) * maxRadius;
+  }*/
+
+  deltaX = Math.min(Math.max(deltaX, -maxRadius), maxRadius);
+  deltaY = Math.min(Math.max(deltaY, -maxRadius), maxRadius);
+  
+  // Update visual position of the stick knob
+  stick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+  
+  // Save normalized vector values (-1.00 to 1.00) for your game engine
+  joystickX = deltaX / maxRadius;
+  joystickY = deltaY / maxRadius;
+  fakeGamepad.axes[0] = joystickX
+  fakeGamepad.axes[1] = joystickY
+
+  // Output to console for testing
+  console.log(`X: ${joystickX.toFixed(2)}, Y: ${joystickY.toFixed(2)}`);
+}
+
+function resetJoystick() {
+  isDragging = false;
+  stick.style.transform = 'translate(-50%, -50%)'; // Snap back to center
+  joystickX = 0;
+  joystickY = 0;
+}
+
 </script>    
 </body>
 </html>
