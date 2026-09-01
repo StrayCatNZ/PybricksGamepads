@@ -540,6 +540,8 @@ function resetJoystick() {
   stick.style.transform = 'translate(-50%, -50%)'; // Snap back to center
   joystickX = 0;
   joystickY = 0;
+  fakeGamepad.axes[0] = joystickX
+  fakeGamepad.axes[1] = joystickY
 }
 
 </script>    
