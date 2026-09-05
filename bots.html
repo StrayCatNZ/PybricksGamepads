@@ -238,7 +238,7 @@ function sendDataUART(characteristic, gp) {
     {
         var btns = gp.buttons.map((v)=>Math.round(v.value * 100));
         var axs = gp.axes.map((v)=>Math.round(v * 100))
-        var data = axs[0] + ";" + axs[1] + ";" + axs[2] + ";" + axs[3] + ";" + btns[0] + ";" + btns[1] + "\n";
+        var data = axs[0] + ";" + axs[1] + ";" + axs[2] + ";" + axs[3] + ";" + btns[0] + ";" + btns[1] + ";" + btns[2] + ";" + btns[3] + "\n";
 	const encoder = new TextEncoder();
 
 	const buffer = encoder.encode(data).buffer;
