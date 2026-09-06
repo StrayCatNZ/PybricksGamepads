@@ -244,6 +244,7 @@ function sendDataUART(characteristic, gp) {
         const buffer = encoder.encode(data).buffer;
         hubReady = false;
         characteristic.writeValueWithResponse(buffer)
+
         .then(r => {
             hubReady = true; 
             //console.log('Sent: ' + data);
