@@ -75,7 +75,43 @@
       border-radius: 50%;
       transform: translate(-50%, -50%);
       transition: transform 0.05s linear;
-    }    
+    }
+
+    #controller-pad {
+      position: fixed;
+      bottom: 50px;
+      left: 230px;
+      width: 150px;
+      height: 150px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      align-items: center;
+      justify-items: center;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .action-button {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid rgba(0, 0, 0, 0.5);
+      background: radial-gradient(circle at 35% 35%, #ffffff, #d9d9d9 35%, #a6a6a6 100%);
+      color: rgba(0, 0, 0, 0.8);
+      font-weight: bold;
+      font-size: 1em;
+      box-shadow: inset 0 2px 2px rgba(255,255,255,0.8), 0 4px 6px rgba(0,0,0,0.2);
+      user-select: none;
+      touch-action: none;
+    }
+
+    .action-button.pressed {
+      background: radial-gradient(circle at 35% 35%, #ffd5d5, #ff9999 35%, #e03d3d 100%);
+      border-color: rgba(120, 0, 0, 0.8);
+      box-shadow: inset 0 2px 2px rgba(255,255,255,0.5), 0 0 10px rgba(255, 60, 60, 0.6);
+    }
 </style>
 </head>
 <body>
@@ -84,7 +120,13 @@
       <div id="joystick-base">
         <div id="joystick-stick"></div>
       </div>
-    </div>    
+    </div>
+    <div id="controller-pad" aria-label="Action buttons">
+      <button class="action-button" data-button="0" type="button">A</button>
+      <button class="action-button" data-button="1" type="button">B</button>
+      <button class="action-button" data-button="2" type="button">X</button>
+      <button class="action-button" data-button="3" type="button">Y</button>
+    </div>
 <script>
 
 var service_uuid = "c5f50001-8280-46da-89f4-6d8051e4aeef";
@@ -465,17 +507,49 @@ updateStatus();
 
 //joystick
 
-var fakeGamepad = { id:"Fake Touch Gamepad", index:666, axes:[0,0,0,0], buttons:[{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},] }
+var fakeGamepad = { id:"Fake Touch Gamepad", index:666, axes:[0,0,0,0], buttons:[{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0},{value:0}] }
 
 addgamepad(fakeGamepad)
 
 const base = document.getElementById('joystick-base');
 const stick = document.getElementById('joystick-stick');
+const actionButtons = Array.from(document.querySelectorAll('.action-button'));
 
 let maxRadius = 50;  // Maximum distance the stick can move
 let joystickX = 0;   // Normalized output X (-1 to 1)
 let joystickY = 0;   // Normalized output Y (-1 to 1)
 let isDragging = false; // Flag to track mouse drag state
+
+function setActionButtonState(index, pressed) {
+  const buttonState = fakeGamepad.buttons[index];
+  if (!buttonState) return;
+  buttonState.value = pressed ? 1 : 0;
+  const button = actionButtons.find((el) => Number(el.dataset.button) === index);
+  if (button) {
+    button.classList.toggle('pressed', pressed);
+  }
+}
+
+actionButtons.forEach((button) => {
+  const index = Number(button.dataset.button);
+  const press = (event) => {
+    if (event && event.cancelable) event.preventDefault();
+    setActionButtonState(index, true);
+  };
+  const release = (event) => {
+    if (event && event.cancelable) event.preventDefault();
+    setActionButtonState(index, false);
+  };
+
+  button.addEventListener('pointerdown', press);
+  button.addEventListener('pointerup', release);
+  button.addEventListener('pointerleave', release);
+  button.addEventListener('pointercancel', release);
+});
+
+window.addEventListener('pointerup', () => {
+  actionButtons.forEach((button) => setActionButtonState(Number(button.dataset.button), false));
+});
 
 // --- TOUCH EVENTS ---
 base.addEventListener('touchstart', (e) => handleInput(e.touches[0], e), { passive: false });
