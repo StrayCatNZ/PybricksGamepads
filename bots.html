@@ -236,17 +236,17 @@ function connect(gamepad, device)
 function sendDataUART(characteristic, gp) {
     if (characteristic && hubReady) 
     {
-        var btns = gp.buttons.map((v)=>Math.round(v.value * 100));
-        var axs = gp.axes.map((v)=>Math.round(v * 100))
-        var data = axs[0] + ";" + axs[1] + ";" + axs[2] + ";" + axs[3] + ";" + btns[0] + ";" + btns[1] + "\n";
-	const encoder = new TextEncoder();
+        var btns = gp.buttons.map((v)=>Math.round(v.value * 200).toString(16).padStart(2, '0'));
+        var axs = gp.axes.map((v)=>Math.round((v+1) * 100).toString(16).padStart(2, '0'));
+        var data = axs[0] + axs[1] + axs[2] + axs[3] + btns[0] + btns[1] + btns[2] + btns[3] + "\n";
+        const encoder = new TextEncoder();
 
-	const buffer = encoder.encode(data).buffer;
-	hubReady = false;
-	characteristic.writeValueWithResponse(buffer)
+        const buffer = encoder.encode(data).buffer;
+        hubReady = false;
+        characteristic.writeValueWithResponse(buffer)
         .then(r => {
             hubReady = true; 
-	    //console.log('Sent: ' + data);
+            //console.log('Sent: ' + data);
         });
 
     } else {
