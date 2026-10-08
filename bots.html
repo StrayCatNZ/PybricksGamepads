@@ -279,7 +279,7 @@ function sendDataUART(characteristic, gp) {
     if (characteristic && hubReady) 
     {
         var btns = gp.buttons.map((v)=>Math.round((v.value+1) * 100).toString(16).padStart(2, '0'));
-        var btns_bin = gp.buttons.slice(0, 8).reduce((t, v, i) => t | Math.round(v.value) * (2 ** i), 0).toString(16).padStart(2, '0');
+        var btns_bin = gp.buttons.slice(0, 16).reduce((t, v, i) => t | Math.round(v.value) * (2 ** i), 0).toString(16).padStart(4, '0');
         var axs = gp.axes.map((v)=>Math.round((v+1) * 100).toString(16).padStart(2, '0'));
         var data = axs[0] + axs[1] + axs[2] + axs[3] + btns[6] + btns[7] + btns_bin + "\n";
         console.log(data);
